@@ -171,7 +171,7 @@ bool open_file_redirect_io(unsigned io_flag, std::string& input_file, std::strin
     }
     if(io_flag & 1) {
         //Redirecting the Input Stream
-        input_desc = open(input_file.c_str(), O_RDONLY, 644);
+        input_desc = open(input_file.c_str(), O_RDONLY, 0644);
         if(input_desc < 0) {
             fprintf(stderr, "Failed to open the input file,\n%s\n", input_file.c_str());
             return false;
@@ -234,7 +234,7 @@ void detect_pipe(std::vector<std::string>& args, size_t& num_of_args, std::vecto
             args[i].erase();
             num_of_args2 = num_of_args - i - 1;
             for(size_t j = i+1; j != num_of_args; j++) {
-                args2[j-i-1] = args[j];
+                args2.push_back(args[j]);
                 args[j].erase();
             }
             num_of_args = i;
@@ -271,7 +271,6 @@ bool run_cmd(std::vector<std::string>& args, size_t num_of_args) {
             int file_desc[2];   //file_desc[0] -> Read Head, file_desc[1] -> Write Head of the Pipe
             pipe(file_desc);
 
-            //Fork Another two processes for communication
             pid_t pid2 = fork();
             if(pid2 > 0) {
                 //Child Process of the 2nd Command
@@ -279,7 +278,7 @@ bool run_cmd(std::vector<std::string>& args, size_t num_of_args) {
                 //Checking for IO Redirection
                 std::string input_file, output_file;
                 int input_desc, output_desc;
-                unsigned io_flag = check_io_redirect(args, num_of_args, input_file, output_file);
+                unsigned io_flag = check_io_redirect(args2, num_of_args2, input_file, output_file);
                 
                 io_flag &= 2; //Disabling the Input Redirection as it'll be taking data from 1st Command.
                 
@@ -294,8 +293,12 @@ bool run_cmd(std::vector<std::string>& args, size_t num_of_args) {
                 wait(NULL);     //Waiting for 1st Command to finish and write data to Write Head, to be buffered in the Read Head.
 
                 //Creating char **args2_c for execvp
-                char *args2_c[MAXLINE/2 + 1];
-                for(size_t i = 0; i != num_of_args2; i++) {
+                char *args2_c[num_of_args2 + 1];
+                for(size_t i = 0; i != num_of_args2 + 1; i++) {
+                    if(i == num_of_args2) {
+                        args2_c[i] = NULL;
+                        continue;
+                    }
                     args2_c[i] = (char*) malloc(args2[i].length() + 1);
                     strcpy(args2_c[i], args2[i].c_str());
                 }
@@ -303,7 +306,7 @@ bool run_cmd(std::vector<std::string>& args, size_t num_of_args) {
                 execvp(args2[0].c_str(), args2_c);    //Execute the 2nd Command and whatever input it requires from STDIN comes from the Read Head.
                 
                 //Freeing the duplicated args
-                for(size_t i = 0; i != num_of_args2; i++) {
+                for(size_t i = 0; i != num_of_args2 + 1; i++) {
                     free(args2_c[i]);
                 }
 
@@ -330,8 +333,12 @@ bool run_cmd(std::vector<std::string>& args, size_t num_of_args) {
                 dup2(file_desc[1], STDOUT_FILENO);      //Setting the Write Head as the Output for the 1st Command.                
 
                 //Creating char **args_c for execvp
-                char *args_c[MAXLINE/2 + 1];
-                for(size_t i = 0; i != num_of_args; i++) {
+                char *args_c[num_of_args + 1];
+                for(size_t i = 0; i != num_of_args + 1; i++) {
+                    if(i == num_of_args) {
+                        args_c[i] = NULL;
+                        continue;
+                    }
                     args_c[i] = (char*) malloc(args[i].length() + 1);
                     strcpy(args_c[i], args[i].c_str());
                 }
@@ -339,7 +346,7 @@ bool run_cmd(std::vector<std::string>& args, size_t num_of_args) {
                 execvp(args[0].c_str(), args_c);      //Execute the 1st Command and whatever output it produces moves from STDOUT to the Write Head. 
 
                 //Freeing the duplicated args
-                for(size_t i = 0; i != num_of_args; i++) {
+                for(size_t i = 0; i != num_of_args + 1; i++) {
                     free(args_c[i]);
                 }
 
@@ -360,8 +367,12 @@ bool run_cmd(std::vector<std::string>& args, size_t num_of_args) {
             }
 
             //Creating char **args_c for execvp
-            char *args_c[MAXLINE/2 + 1];
-            for(size_t i = 0; i != num_of_args; i++) {
+            char *args_c[num_of_args + 1];
+            for(size_t i = 0; i != num_of_args + 1; i++) {
+                if(i == num_of_args) {
+                    args_c[i] = NULL;
+                    continue;
+                }
                 args_c[i] = (char*) malloc(args[i].length() + 1);
                 strcpy(args_c[i], args[i].c_str());
             }
@@ -369,7 +380,7 @@ bool run_cmd(std::vector<std::string>& args, size_t num_of_args) {
             execvp(*args_c, args_c);
             
             //Freeing the duplicated args
-            for(size_t i = 0; i != num_of_args; i++) {
+            for(size_t i = 0; i != num_of_args + 1; i++) {
                 free(args_c[i]);
             }
             
