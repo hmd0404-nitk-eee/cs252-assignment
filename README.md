@@ -20,3 +20,7 @@ Specifications of Host Machine:
 - Providing History of Commands feature.
 - Added support of Input / Output Redirection.
 - Support of Parent-Child Communication via pipes. 
+
+*Note 1: Original Work is provided by [forestLoop](https://github.com/forestLoop) and this work is based off of the original work but implements it using C++ and provides a in-detail manual for others to understand.*
+
+*Note 2: The Manual / Implementation Details can be accessed in [Implementation Details](IMPL_DETAILS.md)*
